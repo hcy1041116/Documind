@@ -1,0 +1,23 @@
+# Windows Zone Identifier files
+*:Zone.Identifier
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Environment
+.env
+
+# Uploads
+uploads/
+pdffiles/
+
+# ChromaDB
+chromadb_data/
+
+# Node
+node_modules/
+
+# Hidden local folders
+.*/
