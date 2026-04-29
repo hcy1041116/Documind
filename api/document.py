@@ -78,3 +78,13 @@ async def get_vector_db_stats():
         return {"status": "success", "total_chunks_in_db": count}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+@router.get("/list")
+async def list_uploaded_documents():
+    try:
+        _filenames = vector_db._collection.get(include=["metadatas"], limit=100)
+        filenames = set()
+        for filename in _filenames["metadatas"]:
+            filenames.add(filename["source"])
+        return {"status": "success", "filenames": list(filenames)}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
