@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Send, FileText, Loader2, User, Bot, UploadCloud, Database, Paperclip } from 'lucide-react';
 
@@ -19,7 +19,15 @@ const App: React.FC = () => {
 
   // 新增：檔案上傳相關狀態
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [modelProvider, setModelProvider] = useState<string>("openai");
   const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  useEffect(() => {
+    axios.get('http://127.0.0.1:8000/api/document/list').then((res) => {
+      setUploadedFiles(res.data.filenames);
+    });
+  }, []);
+
 
   // --- 1. 處理對話發送 ---
   const handleSend = async (): Promise<void> => {
@@ -31,7 +39,8 @@ const App: React.FC = () => {
 
     try {
       const res = await axios.post<ChatResponse>('http://127.0.0.1:8000/api/chat/ask', {
-        question: question
+        question: question,
+        model_provider: modelProvider
       });
       const aiMsg: Message = { role: 'ai', content: res.data.answer };
       setChatHistory((prev) => [...prev, aiMsg]);
@@ -85,6 +94,16 @@ const App: React.FC = () => {
         <div className="p-6 flex-1 flex flex-col gap-4">
           <p className="text-sm text-slate-500 mb-2">上傳企業法規、說明書或 PDF 文件，讓 AI 成為你的專屬顧問。</p>
 
+
+          <select
+            value={modelProvider}
+            onChange={(e) => setModelProvider(e.target.value)}
+            className="w-full border border-slate-300 rounded-xl px-4 py-2 text-sm text-slate-700 bg-white"
+          >
+            <option value="openai">OpenAI GPT-4o</option>
+            <option value="ollama">Ollama（本地）</option>
+          </select>
+
           {/* 檔案選擇按鈕 */}
           <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors">
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
@@ -117,12 +136,27 @@ const App: React.FC = () => {
           <button
             onClick={handleFileUpload}
             disabled={!selectedFiles || isUploading}
-            className="w-full mt-auto bg-slate-800 text-white py-3 rounded-xl font-medium hover:bg-slate-900 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors flex justify-center items-center gap-2"
+            className="w-full bg-slate-800 text-white py-3 rounded-xl font-medium hover:bg-slate-900 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors flex justify-center items-center gap-2"
           >
             {isUploading ? <Loader2 className="animate-spin" size={18} /> : <Database size={18} />}
             {isUploading ? '正在分析並寫入大腦...' : '向量化並寫入知識庫'}
           </button>
+
+          {uploadedFiles.length > 0 && (
+            <div className="border-t border-slate-100 pt-4 overflow-y-auto">
+              <p className="text-xs font-semibold text-slate-500 mb-2">知識庫已收錄</p>
+              <ul className="space-y-1">
+                {uploadedFiles.map((name, i) => (
+                  <li key={i} className="flex items-center gap-2 text-xs text-slate-600">
+                    <FileText size={12} className="shrink-0 text-blue-500" />
+                    <span className="truncate">{name}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
+
       </aside>
 
       {/* 🔵 右側：主要對話區塊 */}

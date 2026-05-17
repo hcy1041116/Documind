@@ -43,7 +43,7 @@ async def ask_document(request: ChatRequest, db: AsyncSession = Depends(get_db))
         sources = list(set([d.metadata.get("title", "未知文件") for d in docs]))
 
         # 🗣️ 3. 升級版 Prompt
-        template = """根據以下提供的【參考文件】內容，以及我們之前的【歷史對話紀錄】，來回答使用者的問題。
+        template = """根據以下提供的【參考文件】內容 (【參考文件】在回答時需明確說明是哪份文件，且回答時不須加上【】)，以及我們之前的【歷史對話紀錄】，來回答使用者的問題。
         
         【歷史對話紀錄】
         {chat_history}
