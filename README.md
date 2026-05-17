@@ -1,6 +1,7 @@
 # DocuMind
 
 企業級 RAG 文件問答系統。上傳 PDF，用自然語言提問，AI 根據文件內容回答，支援 OpenAI 與本地 Ollama 模型。
+![Demo](documind1.png)
 
 ## 功能
 
