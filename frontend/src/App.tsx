@@ -71,6 +71,10 @@ const App: React.FC = () => {
 
       alert(`✅ 上傳成功！共切出 ${res.data.total_chunks} 個知識區塊並存入資料庫。`);
       setSelectedFiles(null); // 清空選擇
+      axios.get('http://127.0.0.1:8000/api/document/list').then((res) => {
+        setUploadedFiles(res.data.filenames);
+      });
+
     } catch (err) {
       console.error("Upload Error:", err);
       alert("❌ 上傳失敗，請檢查控制台錯誤訊息。");

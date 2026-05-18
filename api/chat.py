@@ -36,14 +36,14 @@ async def ask_document(request: ChatRequest, db: AsyncSession = Depends(get_db))
         chat_history_str = "".join([f"User: {m.user_question}\nAI: {m.ai_response}\n\n" for m in history_records])
 
         # 🔍 2. 檢索資料：手動觸發以便抓取 metadata 裡的真實標題
-        retriever = vector_db.as_retriever(search_kwargs={"k": 3})
+        retriever = vector_db.as_retriever(search_kwargs={"k": 6})
         docs = await retriever.ainvoke(request.question)
         
         context_text = "\n\n".join([f"[{d.metadata.get('title', '未知文件')}] {d.page_content}" for d in docs])
         sources = list(set([d.metadata.get("title", "未知文件") for d in docs]))
 
         # 🗣️ 3. 升級版 Prompt
-        template = """根據以下提供的【參考文件】內容 (【參考文件】在回答時需明確說明是哪份文件，且回答時不須加上【】)，以及我們之前的【歷史對話紀錄】，來回答使用者的問題。
+        template = """根據以下提供的【參考文件】內容 (【參考文件】在回答時需明確說明是哪份文件，且回答時不須加上【】)，以及我們之前的【歷史對話紀錄】，來回答使用者的問題。如果參考文件中找不到明確答案，請直接說不知道，不要猜測或編造答案。
         
         【歷史對話紀錄】
         {chat_history}

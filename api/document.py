@@ -81,7 +81,7 @@ async def get_vector_db_stats():
 @router.get("/list")
 async def list_uploaded_documents():
     try:
-        _filenames = vector_db._collection.get(include=["metadatas"], limit=100)
+        _filenames = vector_db._collection.get(include=["metadatas"])
         filenames = set()
         for filename in _filenames["metadatas"]:
             filenames.add(filename["source"])
