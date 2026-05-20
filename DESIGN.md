@@ -1,3 +1,5 @@
+English | [中文](DESIGN-zh-TW.md)
+
 # DocuMind v2 — System Design
 
 > Status: Draft v1 · 2026-05-18
@@ -5,9 +7,7 @@
 
 ---
 
-## 0. 背景 / Background
-
-DocuMind 是一套企業文件 Q&A 系統:使用者上傳 PDF,系統將內容切塊嵌入向量資料庫,並以 RAG 架構結合對話歷史回答問題。
+## 0. Background
 
 DocuMind is an enterprise document Q&A system. Users upload PDFs; the system chunks and embeds them into a vector store, then answers questions via RAG with conversation history.
 
@@ -17,10 +17,10 @@ v1 is functional but has structural gaps that make iteration difficult:
 |---------|--------|
 | No evaluation harness | Any change (chunking, reranker, prompt) is a guess |
 | Prompts and retriever params hardcoded | A/B comparison requires touching source code |
-| No observability | Can't see what was retrieved, what tokens were spent |
-| Linear pipeline | Query rewriting, multi-hop, tool use require a rewrite |
+| No observability | Can't see what was retrieved or what tokens were spent |
+| Linear pipeline | Query rewriting, multi-hop, and tool use require a full rewrite |
 
-**v2 goal**: make the system *engineerably iterable* — measure first, then upgrade; trace first, then go agentic.
+**v2 goal**: make the system engineerably iterable — measure first, then upgrade; trace first, then go agentic.
 
 ---
 
@@ -74,7 +74,7 @@ ChromaDB (collection: documind_law)      ▼
 
 ---
 
-## 2. v2 Goals
+## 2. Goals
 
 **Primary**: transform DocuMind from a working demo into a system that can be iterated with engineering discipline.
 
@@ -93,11 +93,9 @@ ChromaDB (collection: documind_law)      ▼
 
 ## 3. Phased Roadmap
 
-### Phase A — Evaluation Harness *(do this first)*
+### Phase A — Evaluation Harness
 
 **Why first**: upgrading RAG without a yardstick is guesswork. Every Phase B–D change needs a number to justify itself.
-
-**Deliverables**:
 
 | Artifact | Description |
 |----------|-------------|
@@ -106,9 +104,7 @@ ChromaDB (collection: documind_law)      ▼
 | `scripts/run_eval.py` | Runs full pipeline against dataset, outputs CSV + console summary |
 | `docs/eval_baseline.md` | v1 baseline numbers |
 
-Dataset covers three difficulty tiers: single-hop factual, multi-passage synthesis, ambiguous queries requiring rewrite.
-
-Judge model: GPT-4o prompt-based (no Ragas dependency yet).
+Dataset covers three difficulty tiers: single-hop factual, multi-passage synthesis, and ambiguous queries requiring rewrite. Judge model: GPT-4o prompt-based (no Ragas dependency yet).
 
 **Done when**: `uv run python scripts/run_eval.py` completes and prints both score groups; traces visible in LangFuse.
 
@@ -117,25 +113,25 @@ Judge model: GPT-4o prompt-based (no Ragas dependency yet).
 ### Phase B — Observability *(parallel with Phase A tail)*
 
 1. LangFuse self-host via Docker Compose
-2. Callback handler in `services/rag_core.py` — every retrieve + LLM call logged
-3. Extract prompts from `api/chat.py` → `prompts/answer.md` (local files first, LangFuse prompt management later)
+2. Callback handler in `services/rag_core.py` — every retrieve and LLM call logged
+3. Extract prompts from `api/chat.py` → `prompts/answer.md`
 4. Structured logging with `structlog` (JSON output)
 
-**Why parallel with A**: eval scores alone can't tell you *where* a query failed (bad retrieval? LLM ignored context?). Traces are needed to debug, not just measure.
+**Why parallel with A**: eval scores alone can't tell you where a query failed (bad retrieval? LLM ignored context?). Traces are needed to debug, not just measure.
 
 ---
 
 ### Phase C — RAG Improvements *(after Phase A baseline)*
 
-Each item is an independent PR; each PR runs `make eval` and logs delta in `docs/eval_log.md`.
+Each item is an independent PR; each PR runs `make eval` and logs the delta in `docs/eval_log.md`.
 
 | Item | Expected gain | Priority |
 |------|--------------|----------|
-| **Metadata fallback** | Correctness fix | 1st — cheap, no eval needed |
-| **Reranker** (BGE-reranker-base or Cohere rerank-3) | Context precision ↑ | 2nd — highest ROI |
-| **Chunking** (500→800–1000, overlap 50→100; try SemanticChunker) | Recall ↑ for long Chinese text | 3rd |
-| **Hybrid search** (ChromaDB dense + BM25 sparse, RRF fusion) | Recall ↑ on proper nouns | 4th |
-| **Embedding swap** (BGE-M3 / multilingual-e5) | Chinese benchmark ↑ | Last — requires full index rebuild |
+| Metadata fallback | Correctness fix | 1st — cheap, no eval needed |
+| Reranker (BGE-reranker-base or Cohere rerank-3) | Context precision ↑ | 2nd — highest ROI |
+| Chunking (500 → 800–1000, overlap 50 → 100; try SemanticChunker) | Recall ↑ for long Chinese text | 3rd |
+| Hybrid search (ChromaDB dense + BM25 sparse, RRF fusion) | Recall ↑ on proper nouns | 4th |
+| Embedding swap (BGE-M3 / multilingual-e5) | Chinese benchmark ↑ | Last — requires full index rebuild |
 
 ---
 
@@ -171,7 +167,7 @@ Replace the linear pipeline with a state machine that can plan, rewrite queries,
 └─────────────┘
 ```
 
-**Why LangGraph over CrewAI**: LangGraph is a state machine — debuggable, traceable, integrates with LangFuse. CrewAI is for multi-role collaboration; DocuMind is single-objective QA.
+**Why LangGraph over CrewAI**: LangGraph is a state machine — debuggable, traceable, integrates well with LangFuse. CrewAI targets multi-role collaboration; DocuMind is single-objective QA.
 
 Old linear pipeline stays as `?mode=simple` fallback for regression testing.
 
@@ -183,7 +179,7 @@ Wrap DocuMind as an MCP server so Claude Desktop and other MCP clients can call:
 - `documind_search(query)` → retrieved chunks
 - `documind_ask(question)` → full answer + citations
 
-*Prerequisite: Phase D stable. Packaging before the core is stable exposes instability.*
+*Prerequisite: Phase D stable. Packaging an unstable core exposes instability.*
 
 ---
 
@@ -217,9 +213,9 @@ Five changes, each under 30 minutes, that unblock all later phases:
 
 ---
 
-## 6. Explicit Non-Goals
+## 6. Non-Goals
 
-- ❌ Replace ChromaDB (no compelling reason)
+- ❌ Replace ChromaDB
 - ❌ Rewrite frontend
 - ❌ Optimize Ollama path
 - ❌ Multi-tenancy

@@ -36,7 +36,7 @@ async def upload_multiple_pdfs(files: Annotated[list[UploadFile], File(descripti
             
             # 🌟【升級】抓取第一頁文字作為真實標題
             first_page_text = pages[0].page_content.strip()
-            real_title = "未知文件"
+            real_title = file.filename
             if first_page_text:
                 lines = [line.strip() for line in first_page_text.split('\n') if line.strip()]
                 if lines:

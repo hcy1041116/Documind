@@ -14,7 +14,8 @@ from schemas import ChatRequest, ChatTestRequest, ModelProvider
 
 
 router = APIRouter(prefix="/api/chat", tags=["Chat"])
-
+with open("prompts/answer.md", "r", encoding="utf-8") as f:
+    ANSWER_TEMPLATE = f.read()
 
 @router.post("/ask")
 async def ask_document(request: ChatRequest, db: AsyncSession = Depends(get_db)):
@@ -40,20 +41,10 @@ async def ask_document(request: ChatRequest, db: AsyncSession = Depends(get_db))
         docs = await retriever.ainvoke(request.question)
         
         context_text = "\n\n".join([f"[{d.metadata.get('title', '未知文件')}] {d.page_content}" for d in docs])
-        sources = list(set([d.metadata.get("title", "未知文件") for d in docs]))
+        sources = list(dict.fromkeys([d.metadata.get("title", "未知文件") for d in docs]))
 
         # 🗣️ 3. 升級版 Prompt
-        template = """根據以下提供的【參考文件】內容 (【參考文件】在回答時需明確說明是哪份文件，且回答時不須加上【】)，以及我們之前的【歷史對話紀錄】，來回答使用者的問題。如果參考文件中找不到明確答案，請直接說不知道，不要猜測或編造答案。
-        
-        【歷史對話紀錄】
-        {chat_history}
-        
-        【參考文件】
-        {context}
-        
-        Question: {input}
-        """
-        prompt = ChatPromptTemplate.from_template(template)
+        prompt = ChatPromptTemplate.from_template(ANSWER_TEMPLATE)
         chain = prompt | llm | StrOutputParser()
         
         response = await chain.ainvoke({
