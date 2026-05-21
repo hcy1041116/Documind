@@ -116,6 +116,7 @@ ChromaDB（collection: documind_law）     ▼
 2. 在 `services/rag_core.py` 加 callback handler，每次 retrieve 與 LLM call 都進 LangFuse
 3. 將 prompt 從 `api/chat.py` 抽出 → `prompts/answer.md`
 4. 補結構化 logging：`structlog`，JSON 輸出
+5. **Cost 與 latency 列為第一級指標** — 每次請求記錄 token 用量、各 node 耗時、p50/p95 延遲。LangFuse 預設會收，需在每份 eval 報告中與品質分數並列呈現。
 
 **為什麼與 A 並行**：光看分數無法知道哪一步出問題（retrieve 沒抓到？還是 LLM 沒用好 context？），trace 是 debug 的必要條件。
 

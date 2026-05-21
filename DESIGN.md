@@ -116,6 +116,7 @@ Dataset covers three difficulty tiers: single-hop factual, multi-passage synthes
 2. Callback handler in `services/rag_core.py` — every retrieve and LLM call logged
 3. Extract prompts from `api/chat.py` → `prompts/answer.md`
 4. Structured logging with `structlog` (JSON output)
+5. **Cost & latency as first-class metrics** — token usage per request, per-node duration, p50/p95 latency. LangFuse captures these by default; surface them in every eval report alongside quality scores.
 
 **Why parallel with A**: eval scores alone can't tell you where a query failed (bad retrieval? LLM ignored context?). Traces are needed to debug, not just measure.
 
