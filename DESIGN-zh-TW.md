@@ -97,12 +97,12 @@ ChromaDB（collection: documind_law）     ▼
 
 **為什麼先做**：沒有量尺就升級 RAG，等於在黑暗中換零件。Phase B 以後的每個改動都要靠 A 的數字來驗證。
 
-| 產出物 | 說明 |
-|--------|------|
-| `evals/dataset.jsonl` | 20–50 題，每筆含 `question`、`expected_answer`、`expected_source_titles`、`difficulty` |
-| `evals/metrics.py` | Retrieval：Recall@k、MRR、context precision；Answer：LLM-as-judge（faithfulness、relevance） |
-| `scripts/run_eval.py` | 跑完整 pipeline，輸出 CSV + console summary |
-| `docs/eval_baseline.md` | v1 基準數字 |
+| 產出物 | 說明 | 狀態 |
+|--------|------|------|
+| `evals/dataset.jsonl` | 20–50 題，每筆含 `question`、`expected_answer`、`expected_source_titles`、`difficulty` | ✅ 13 題 |
+| `prompts/judge.md` | Faithfulness judge prompt（GPT-4o） | ✅ 完成 |
+| `scripts/run_eval.py` | Retrieval 指標（Recall@k、MRR）+ LLM-as-judge faithfulness；CSV + console summary | 🔄 retrieval + faithfulness 完成；answer relevance + CSV 待做 |
+| `docs/eval_baseline.md` | v1 基準數字 | ⬜ 待做 |
 
 測試集涵蓋三種難度：單跳事實題、需綜合多段、需要 query rewrite 的模糊題。Judge 模型：GPT-4o prompt-based（暫不引入 Ragas）。
 

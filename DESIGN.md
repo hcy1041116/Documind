@@ -97,12 +97,12 @@ ChromaDB (collection: documind_law)      ▼
 
 **Why first**: upgrading RAG without a yardstick is guesswork. Every Phase B–D change needs a number to justify itself.
 
-| Artifact | Description |
-|----------|-------------|
-| `evals/dataset.jsonl` | 20–50 QA pairs with `question`, `expected_answer`, `expected_source_titles`, `difficulty` |
-| `evals/metrics.py` | Retrieval: Recall@k, MRR, context precision · Answer: LLM-as-judge (faithfulness, relevance) |
-| `scripts/run_eval.py` | Runs full pipeline against dataset, outputs CSV + console summary |
-| `docs/eval_baseline.md` | v1 baseline numbers |
+| Artifact | Description | Status |
+|----------|-------------|--------|
+| `evals/dataset.jsonl` | 20–50 QA pairs with `question`, `expected_answer`, `expected_source_titles`, `difficulty` | ✅ 13 questions |
+| `prompts/judge.md` | Faithfulness judge prompt (GPT-4o) | ✅ done |
+| `scripts/run_eval.py` | Retrieval metrics (Recall@k, MRR) + LLM-as-judge faithfulness · CSV + console summary | 🔄 retrieval + faithfulness done; answer relevance + CSV pending |
+| `docs/eval_baseline.md` | v1 baseline numbers | ⬜ pending |
 
 Dataset covers three difficulty tiers: single-hop factual, multi-passage synthesis, and ambiguous queries requiring rewrite. Judge model: GPT-4o prompt-based (no Ragas dependency yet).
 
