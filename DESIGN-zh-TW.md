@@ -100,9 +100,10 @@ ChromaDB（collection: documind_law）     ▼
 | 產出物 | 說明 | 狀態 |
 |--------|------|------|
 | `evals/dataset.jsonl` | 20–50 題，每筆含 `question`、`expected_answer`、`expected_source_titles`、`difficulty` | ✅ 13 題 |
-| `prompts/judge.md` | Faithfulness judge prompt（GPT-4o） | ✅ 完成 |
-| `scripts/run_eval.py` | Retrieval 指標（Recall@k、MRR）+ LLM-as-judge faithfulness；CSV + console summary | 🔄 retrieval + faithfulness 完成；answer relevance + CSV 待做 |
-| `docs/eval_baseline.md` | v1 基準數字 | ⬜ 待做 |
+| `prompts/judge_faithfulness.md` | Faithfulness judge prompt（GPT-4o） | ✅ 完成 |
+| `prompts/judge_relevance.md` | Answer relevance judge prompt（GPT-4o） | ✅ 完成 |
+| `scripts/run_eval.py` | Recall@k、MRR、faithfulness、relevance；輸出 CSV + console summary | ✅ 完成 |
+| `docs/eval_baseline.md` | v1 基準 — Recall 1.00 / MRR 1.00 / Faithfulness 0.92 / Relevance 0.92 | ✅ 完成（本地，gitignored） |
 
 測試集涵蓋三種難度：單跳事實題、需綜合多段、需要 query rewrite 的模糊題。Judge 模型：GPT-4o prompt-based（暫不引入 Ragas）。
 

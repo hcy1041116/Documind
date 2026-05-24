@@ -100,9 +100,10 @@ ChromaDB (collection: documind_law)      ▼
 | Artifact | Description | Status |
 |----------|-------------|--------|
 | `evals/dataset.jsonl` | 20–50 QA pairs with `question`, `expected_answer`, `expected_source_titles`, `difficulty` | ✅ 13 questions |
-| `prompts/judge.md` | Faithfulness judge prompt (GPT-4o) | ✅ done |
-| `scripts/run_eval.py` | Retrieval metrics (Recall@k, MRR) + LLM-as-judge faithfulness · CSV + console summary | 🔄 retrieval + faithfulness done; answer relevance + CSV pending |
-| `docs/eval_baseline.md` | v1 baseline numbers | ⬜ pending |
+| `prompts/judge_faithfulness.md` | Faithfulness judge prompt (GPT-4o) | ✅ done |
+| `prompts/judge_relevance.md` | Answer relevance judge prompt (GPT-4o) | ✅ done |
+| `scripts/run_eval.py` | Recall@k, MRR, faithfulness, relevance · outputs CSV + console summary | ✅ done |
+| `docs/eval_baseline.md` | v1 baseline — Recall 1.00 / MRR 1.00 / Faithfulness 0.92 / Relevance 0.92 | ✅ done (local, gitignored) |
 
 Dataset covers three difficulty tiers: single-hop factual, multi-passage synthesis, and ambiguous queries requiring rewrite. Judge model: GPT-4o prompt-based (no Ragas dependency yet).
 

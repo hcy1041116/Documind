@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 import time
 import asyncio
-
+import csv
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -75,3 +75,16 @@ print(f"Recall@{k}:    {sum(recall_hits) / len(recall_hits):.2f} ({sum(recall_hi
 print(f"MRR@{k}:       {sum(reciprocal_ranks) / len(reciprocal_ranks):.2f}")
 print(f"Faithfulness:  {sum(faithfulness_scores) / len(faithfulness_scores):.2f} (avg over {len(faithfulness_scores)} questions)")
 print(f"Relevance:     {sum(relevance_scores) / len(relevance_scores):.2f} (avg over {len(relevance_scores)} questions)")
+
+with open("results.csv", "w", newline="", encoding="utf-8") as f:
+    writer = csv.DictWriter(f, fieldnames=["question", "difficulty", "hit", "rr", "faithfulness", "relevance"])
+    writer.writeheader()
+    for i, q in enumerate(questions):
+        writer.writerow({
+            "question": q["question"],
+            "difficulty": q["difficulty"],
+            "hit": recall_hits[i],
+            "rr": reciprocal_ranks[i],
+            "faithfulness": faithfulness_scores[i],
+            "relevance": relevance_scores[i]
+        })

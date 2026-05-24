@@ -54,6 +54,12 @@ npm run dev
 OPENAI_API_KEY=your_key_here
 ```
 
+## 開發進度
+
+目前正進行 v2 工程化改造。完整技術規劃見 [DESIGN-zh-TW.md](DESIGN-zh-TW.md)（eval harness → observability → RAG 升級 → agentic pipeline）。
+
+---
+
 ## Request Flow
 
 ```
