@@ -15,6 +15,7 @@ dependencies = [
     "langchain-ollama>=1.0.1",
     "langchain-openai>=1.1.10",
     "langchain-text-splitters>=1.1.1",
+    "langfuse>=4.7.1",
     "pypdf>=6.7.3",
     "python-dotenv>=1.2.1",
     "python-multipart>=0.0.22",

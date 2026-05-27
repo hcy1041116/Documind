@@ -10,6 +10,7 @@ from langchain_core.output_parsers import StrOutputParser
 from database import get_db
 import models
 from services.rag_core import vector_db
+from services.observability import get_langfuse_handler
 from schemas import ChatRequest, ChatTestRequest, ModelProvider
 
 
@@ -37,21 +38,22 @@ async def ask_document(request: ChatRequest, db: AsyncSession = Depends(get_db))
         chat_history_str = "".join([f"User: {m.user_question}\nAI: {m.ai_response}\n\n" for m in history_records])
 
         # 🔍 2. 檢索資料：手動觸發以便抓取 metadata 裡的真實標題
+        langfuse_handler = get_langfuse_handler()
         retriever = vector_db.as_retriever(search_kwargs={"k": 6})
-        docs = await retriever.ainvoke(request.question)
-        
+        docs = await retriever.ainvoke(request.question, config={"callbacks": [langfuse_handler]})
+
         context_text = "\n\n".join([f"[{d.metadata.get('title', '未知文件')}] {d.page_content}" for d in docs])
         sources = list(dict.fromkeys([d.metadata.get("title", "未知文件") for d in docs]))
 
         # 🗣️ 3. 升級版 Prompt
         prompt = ChatPromptTemplate.from_template(ANSWER_TEMPLATE)
         chain = prompt | llm | StrOutputParser()
-        
+
         response = await chain.ainvoke({
             "chat_history": chat_history_str,
             "context": context_text,
             "input": request.question
-        })
+        }, config={"callbacks": [langfuse_handler]})
 
         # 💾 4. 寫入新記憶
         try:
