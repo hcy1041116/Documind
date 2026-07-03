@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Send, FileText, Loader2, User, Bot, UploadCloud, Database, Paperclip } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
 interface Message {
   role: 'user' | 'ai';
   content: string;
@@ -23,7 +25,7 @@ const App: React.FC = () => {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   useEffect(() => {
-    axios.get('http://127.0.0.1:8000/api/document/list').then((res) => {
+    axios.get(`${API_BASE_URL}/api/document/list`).then((res) => {
       setUploadedFiles(res.data.filenames);
     });
   }, []);
@@ -38,7 +40,7 @@ const App: React.FC = () => {
     setLoading(true);
 
     try {
-      const res = await axios.post<ChatResponse>('http://127.0.0.1:8000/api/chat/ask', {
+      const res = await axios.post<ChatResponse>(`${API_BASE_URL}/api/chat/ask`, {
         question: question,
         model_provider: modelProvider
       });
@@ -65,13 +67,13 @@ const App: React.FC = () => {
     });
 
     try {
-      const res = await axios.post('http://127.0.0.1:8000/api/document/upload/bulk', formData, {
+      const res = await axios.post(`${API_BASE_URL}/api/document/upload/bulk`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' } // 告訴後端這是檔案
       });
 
       alert(`✅ 上傳成功！共切出 ${res.data.total_chunks} 個知識區塊並存入資料庫。`);
       setSelectedFiles(null); // 清空選擇
-      axios.get('http://127.0.0.1:8000/api/document/list').then((res) => {
+      axios.get(`${API_BASE_URL}/api/document/list`).then((res) => {
         setUploadedFiles(res.data.filenames);
       });
 
