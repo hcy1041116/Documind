@@ -1,10 +1,11 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine
 import models
 from api import chat, document
+from dependencies import verify_access_code
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -35,5 +36,5 @@ async def health_check():
     return {"status": "ok", "message": "DocuMind 伺服器與資料庫就緒！"}
 
 # 🚀 把剛剛拆分的部門掛載上來
-app.include_router(chat.router)
-app.include_router(document.router)
+app.include_router(chat.router, dependencies=[Depends(verify_access_code)])
+app.include_router(document.router, dependencies=[Depends(verify_access_code)])
