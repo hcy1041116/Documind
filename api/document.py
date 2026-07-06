@@ -1,10 +1,30 @@
 import os
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyMuPDFLoader
+import fitz          
+import pytesseract
+from PIL import Image
+from langchain_core.documents import Document
 
 # 引入剛剛建好的 AI 核心
 from services.rag_core import vector_db, text_splitter
+
+def ocr_pdf(file_path: str) -> list[Document]:
+    doc = fitz.open(file_path)
+    pages = []
+    for i, page in enumerate(doc):
+        # 放大到 300 DPI（PDF 預設 72 DPI，乘以 300/72 ≈ 4.17x）
+        pix = page.get_pixmap(matrix=fitz.Matrix(300/72, 300/72))
+        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+        text = pytesseract.image_to_string(img, lang="chi_tra")
+        pages.append(Document(
+            page_content=text,
+            metadata={"source": file_path, "page": i}
+        ))
+    doc.close()
+    return pages
+
 
 router = APIRouter(prefix="/api/document", tags=["Document"])
 
@@ -31,8 +51,15 @@ async def upload_multiple_pdfs(files: Annotated[list[UploadFile], File(descripti
             with open(file_path, "wb") as buffer:
                 buffer.write(content)
                 
-            loader = PyPDFLoader(file_path)
-            pages = loader.load() 
+            # 第一步：先用 PyMuPDF 試
+            loader = PyMuPDFLoader(file_path)
+            pages = loader.load()
+
+            # 第二步：算平均每頁字數，太少就走 OCR
+            total_chars = sum(len(p.page_content) for p in pages)
+            if pages and total_chars / len(pages) < 100:
+                pages = ocr_pdf(file_path)
+
             
             # 🌟【升級】抓取第一頁文字作為真實標題
             first_page_text = pages[0].page_content.strip()

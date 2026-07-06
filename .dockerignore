@@ -1,0 +1,11 @@
+.env
+.venv/
+__pycache__/
+chromadb_data/
+uploads/
+docs/
+results.csv
+frontend/node_modules/
+node_modules/
+*.pyc
+*.Zone.Identifier
