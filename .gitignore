@@ -24,7 +24,8 @@ node_modules/
 .*/
 
 # Local notes
-docs/
+notes/
 
 # Eval output
 results.csv
+results_ragas.csv
