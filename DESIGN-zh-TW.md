@@ -82,7 +82,7 @@ ChromaDB（collection: documind_law）     ▼
 - 不追求 SOTA RAG 分數（個人專案，非學術研究）
 - 不重寫前端
 - 不做 multi-tenant（Phase F 才考慮）
-- 不導入 LangSmith（優先 LangFuse self-host）
+- 不導入 LangSmith（改用 LangFuse；self-host 測試過，後來改接 LangFuse Cloud）
 
 **完成標準**：
 - Phase A 結束：任何 PR 都能跑 `make eval`，輸出 retrieval 與 answer quality 數字
@@ -99,25 +99,25 @@ ChromaDB（collection: documind_law）     ▼
 
 | 產出物 | 說明 | 狀態 |
 |--------|------|------|
-| `evals/dataset.jsonl` | 20–50 題，每筆含 `question`、`expected_answer`、`expected_source_titles`、`difficulty` | ✅ 13 題 |
-| `prompts/judge_faithfulness.md` | Faithfulness judge prompt（GPT-4o） | ✅ 完成 |
-| `prompts/judge_relevance.md` | Answer relevance judge prompt（GPT-4o） | ✅ 完成 |
-| `scripts/run_eval.py` | Recall@k、MRR、faithfulness、relevance；輸出 CSV + console summary | ✅ 完成 |
-| `docs/eval_baseline.md` | v1 基準 — Recall 1.00 / MRR 1.00 / Faithfulness 0.92 / Relevance 0.92 | ✅ 完成（本地，gitignored） |
+| `evals/dataset.jsonl` | 20–50 題，每筆含 `question`、`expected_answer`、`expected_source_titles`、`difficulty` | ✅ 15 題（2026-07-11 擴充，加入 QA 文件來源的題目與多重來源標記） |
+| `prompts/judge_faithfulness.md` / `judge_relevance.md` | 手刻 judge prompt（GPT-4o） | ⚠️ 已被 RAGAS 內建 judge 取代，檔案還在但目前未使用 |
+| ~~`scripts/run_eval.py`~~ | Recall@k、MRR、faithfulness、relevance | 🗄️ 已封存，改用下一列 |
+| `scripts/RAGAS.py` | 改用 RAGAS 框架：Faithfulness、Answer Relevancy、Context Recall、Context Precision | ✅ 完成（2026 年中遷移），⚠️ 但可靠度有已知問題——長時間跑會有連線失敗、部分分數拿不到，細節見內部筆記 |
+| `notes/eval_baseline.md` | v1 基準（單一文件情境）— Recall 1.00 / MRR 1.00 / Faithfulness 0.92 / Relevance 0.92 | ✅ 完成（本地，gitignored；已是舊 pipeline 的基準，非目前 RAGAS 數字的對照） |
 
-測試集涵蓋三種難度：單跳事實題、需綜合多段、需要 query rewrite 的模糊題。Judge 模型：GPT-4o prompt-based（暫不引入 Ragas）。
+測試集涵蓋三種難度：單跳事實題、需綜合多段、需要 query rewrite 的模糊題。Judge 模型：改用 RAGAS 框架（取代原本手刻的 prompt-based judge）。
 
-**怎麼算完成**：`uv run python scripts/run_eval.py` 跑完並印出兩組分數；LangFuse 看得到 trace。
+**怎麼算完成**：`uv run python scripts/RAGAS.py` 跑完並印出四組分數；LangFuse 看得到 trace。
 
 ---
 
-### Phase B — Observability（可與 Phase A 後段並行）
+### Phase B — Observability（可與 Phase A 後段並行）✅ 大致完成
 
-1. LangFuse self-host（Docker Compose）
-2. 在 `services/rag_core.py` 加 callback handler，每次 retrieve 與 LLM call 都進 LangFuse
-3. 將 prompt 從 `api/chat.py` 抽出 → `prompts/answer.md`
-4. 補結構化 logging：`structlog`，JSON 輸出
-5. **Cost 與 latency 列為第一級指標** — 每次請求記錄 token 用量、各 node 耗時、p50/p95 延遲。LangFuse 預設會收，需在每份 eval 報告中與品質分數並列呈現。
+1. ~~LangFuse self-host（Docker Compose）~~ → ✅ 改用 LangFuse Cloud（self-host container 還留著但已停用）
+2. ✅ 在 `services/rag_core.py`／`api/chat.py` 加 callback handler，每次 retrieve 與 LLM call 都進 LangFuse
+3. ✅ 將 prompt 從 `api/chat.py` 抽出 → `prompts/answer.md`
+4. ⬜ 補結構化 logging：`structlog`，JSON 輸出（未做）
+5. ⬜ **Cost 與 latency 列為第一級指標**（未做）— LangFuse 預設有收，但還沒有整理進 eval 報告跟品質分數並列呈現
 
 **為什麼與 A 並行**：光看分數無法知道哪一步出問題（retrieve 沒抓到？還是 LLM 沒用好 context？），trace 是 debug 的必要條件。
 
@@ -127,13 +127,13 @@ ChromaDB（collection: documind_law）     ▼
 
 每個項目各為一個獨立 PR；每個 PR 都跑 `make eval` 並將 delta 記錄在 `docs/eval_log.md`。
 
-| 項目 | 預期效益 | 優先序 |
-|------|---------|--------|
-| Metadata fallback | 正確性修復 | 第 1 — 成本低，不需要 eval |
-| Reranker（BGE-reranker-base 或 Cohere rerank-3） | Context precision ↑ | 第 2 — ROI 最高 |
-| Chunking（500 → 800–1000，overlap 50 → 100；試 SemanticChunker） | 中文長文 Recall ↑ | 第 3 |
-| Hybrid search（ChromaDB dense + BM25 sparse，RRF fusion） | 專有名詞 Recall ↑ | 第 4 |
-| Embedding 替換（BGE-M3 / multilingual-e5） | 中文 benchmark ↑ | 最後 — 需重建整個索引 |
+| 項目 | 預期效益 | 優先序 | 狀態 |
+|------|---------|--------|------|
+| Metadata fallback | 正確性修復 | 第 1 — 成本低，不需要 eval | ✅ 完成（2026-07-10，三層 fallback：PDF metadata → 首行 → 檔名） |
+| Reranker（原規劃 BGE-reranker-base 或 Cohere rerank-3） | Context precision ↑ | 第 2 — ROI 最高 | ✅ 完成（2026-07-10，實際改用 flashrank 本機多語言 cross-encoder，不需要額外 API key） |
+| Chunking（500 → 800–1000，overlap 50 → 100；試 SemanticChunker） | 中文長文 Recall ↑ | 第 3 | ⬜ 未做——已發現兩欄「問／答」版面 PDF 的 chunk 邊界問題（見 `notes/todo.md` Backlog），跟這項高度相關 |
+| Hybrid search（ChromaDB dense + BM25 sparse，RRF fusion） | 專有名詞 Recall ↑ | 第 4 | ✅ 完成（2026-07-10，`EnsembleRetriever`，向量 + BM25） |
+| Embedding 替換（BGE-M3 / multilingual-e5） | 中文 benchmark ↑ | 最後 — 需重建整個索引 | ⬜ 未做 |
 
 ---
 
@@ -191,15 +191,15 @@ JWT 認證、rate limiting、CORS 收緊、連線字串從 env 讀取、上傳�
 
 ---
 
-## 4. 立刻可以做的小事（Phase A 之前）
+## 4. 立刻可以做的小事（Phase A 之前）✅ 全部完成
 
 五個改動，每個不超過 30 分鐘，卻能讓後續所有 Phase 都更順：
 
-1. `api/chat.py`：`set(sources)` 改為保序去重
-2. `test.py`：加入 `from services.rag_core import vector_db`
-3. `services/rag_core.py`：`langchain_community.vectorstores.Chroma` → `langchain_chroma.Chroma`
-4. `api/document.py`：三層 title fallback — 檔名 → PDF metadata → 首行啟發式
-5. 將 prompt 字串從 `api/chat.py` 移出 → `prompts/answer.md`
+1. ✅ `api/chat.py`：`set(sources)` 改為保序去重
+2. ✅ `test.py`：加入 `from services.rag_core import vector_db`
+3. ✅ `services/rag_core.py`：`langchain_community.vectorstores.Chroma` → `langchain_chroma.Chroma`
+4. ✅ `api/document.py`：三層 title fallback（實際版本：PDF metadata → 首行啟發式 → 檔名，跟原規劃順序略有不同）
+5. ✅ 將 prompt 字串從 `api/chat.py` 移出 → `prompts/answer.md`
 
 ---
 

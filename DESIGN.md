@@ -82,7 +82,7 @@ ChromaDB (collection: documind_law)      ▼
 - SOTA RAG benchmarks (personal project, not research)
 - Frontend rewrite
 - Multi-tenancy (Phase F at earliest)
-- LangSmith (LangFuse self-host preferred)
+- LangSmith (using LangFuse instead; self-host was tried, later switched to LangFuse Cloud)
 
 **Definition of done**:
 - After Phase A: any PR can run `make eval` and get retrieval + answer quality numbers
@@ -99,25 +99,25 @@ ChromaDB (collection: documind_law)      ▼
 
 | Artifact | Description | Status |
 |----------|-------------|--------|
-| `evals/dataset.jsonl` | 20–50 QA pairs with `question`, `expected_answer`, `expected_source_titles`, `difficulty` | ✅ 13 questions |
-| `prompts/judge_faithfulness.md` | Faithfulness judge prompt (GPT-4o) | ✅ done |
-| `prompts/judge_relevance.md` | Answer relevance judge prompt (GPT-4o) | ✅ done |
-| `scripts/run_eval.py` | Recall@k, MRR, faithfulness, relevance · outputs CSV + console summary | ✅ done |
-| `docs/eval_baseline.md` | v1 baseline — Recall 1.00 / MRR 1.00 / Faithfulness 0.92 / Relevance 0.92 | ✅ done (local, gitignored) |
+| `evals/dataset.jsonl` | 20–50 QA pairs with `question`, `expected_answer`, `expected_source_titles`, `difficulty` | ✅ 15 questions (expanded 2026-07-11 with QA-document-sourced questions and multi-source labels) |
+| `prompts/judge_faithfulness.md` / `judge_relevance.md` | Hand-rolled judge prompts (GPT-4o) | ⚠️ Superseded by RAGAS's built-in judges; files remain but are currently unused |
+| ~~`scripts/run_eval.py`~~ | Recall@k, MRR, faithfulness, relevance | 🗄️ Archived, replaced by the row below |
+| `scripts/RAGAS.py` | Migrated to the RAGAS framework: Faithfulness, Answer Relevancy, Context Recall, Context Precision | ✅ done (mid-2026 migration), ⚠️ but has known reliability issues — long runs hit connection failures and some scores come back missing; see internal notes |
+| `notes/eval_baseline.md` | v1 baseline (single-document setup) — Recall 1.00 / MRR 1.00 / Faithfulness 0.92 / Relevance 0.92 | ✅ done (local, gitignored); this baseline predates the current RAGAS pipeline and multi-document setup |
 
-Dataset covers three difficulty tiers: single-hop factual, multi-passage synthesis, and ambiguous queries requiring rewrite. Judge model: GPT-4o prompt-based (no Ragas dependency yet).
+Dataset covers three difficulty tiers: single-hop factual, multi-passage synthesis, and ambiguous queries requiring rewrite. Judge model: migrated to the RAGAS framework (replacing the original hand-rolled prompt-based judge).
 
-**Done when**: `uv run python scripts/run_eval.py` completes and prints both score groups; traces visible in LangFuse.
+**Done when**: `uv run python scripts/RAGAS.py` completes and prints all four score groups; traces visible in LangFuse.
 
 ---
 
-### Phase B — Observability *(parallel with Phase A tail)*
+### Phase B — Observability *(parallel with Phase A tail)* ✅ mostly done
 
-1. LangFuse self-host via Docker Compose
-2. Callback handler in `services/rag_core.py` — every retrieve and LLM call logged
-3. Extract prompts from `api/chat.py` → `prompts/answer.md`
-4. Structured logging with `structlog` (JSON output)
-5. **Cost & latency as first-class metrics** — token usage per request, per-node duration, p50/p95 latency. LangFuse captures these by default; surface them in every eval report alongside quality scores.
+1. ~~LangFuse self-host via Docker Compose~~ → ✅ switched to LangFuse Cloud (self-host container still exists locally but is stopped/unused)
+2. ✅ Callback handler in `services/rag_core.py`/`api/chat.py` — every retrieve and LLM call logged
+3. ✅ Extract prompts from `api/chat.py` → `prompts/answer.md`
+4. ⬜ Structured logging with `structlog` (JSON output) — not done
+5. ⬜ **Cost & latency as first-class metrics** — not done. LangFuse captures these by default, but they haven't been surfaced in eval reports alongside quality scores yet.
 
 **Why parallel with A**: eval scores alone can't tell you where a query failed (bad retrieval? LLM ignored context?). Traces are needed to debug, not just measure.
 
@@ -127,13 +127,13 @@ Dataset covers three difficulty tiers: single-hop factual, multi-passage synthes
 
 Each item is an independent PR; each PR runs `make eval` and logs the delta in `docs/eval_log.md`.
 
-| Item | Expected gain | Priority |
-|------|--------------|----------|
-| Metadata fallback | Correctness fix | 1st — cheap, no eval needed |
-| Reranker (BGE-reranker-base or Cohere rerank-3) | Context precision ↑ | 2nd — highest ROI |
-| Chunking (500 → 800–1000, overlap 50 → 100; try SemanticChunker) | Recall ↑ for long Chinese text | 3rd |
-| Hybrid search (ChromaDB dense + BM25 sparse, RRF fusion) | Recall ↑ on proper nouns | 4th |
-| Embedding swap (BGE-M3 / multilingual-e5) | Chinese benchmark ↑ | Last — requires full index rebuild |
+| Item | Expected gain | Priority | Status |
+|------|--------------|----------|--------|
+| Metadata fallback | Correctness fix | 1st — cheap, no eval needed | ✅ done (2026-07-10, three-tier fallback: PDF metadata → first line → filename) |
+| Reranker (originally planned: BGE-reranker-base or Cohere rerank-3) | Context precision ↑ | 2nd — highest ROI | ✅ done (2026-07-10, actually used flashrank — a local multilingual cross-encoder, no API key needed) |
+| Chunking (500 → 800–1000, overlap 50 → 100; try SemanticChunker) | Recall ↑ for long Chinese text | 3rd | ⬜ not done — closely related to a known issue with two-column "Q/A" layout PDFs causing bad chunk boundaries (see Backlog in `notes/todo.md`) |
+| Hybrid search (ChromaDB dense + BM25 sparse, RRF fusion) | Recall ↑ on proper nouns | 4th | ✅ done (2026-07-10, `EnsembleRetriever`, vector + BM25) |
+| Embedding swap (BGE-M3 / multilingual-e5) | Chinese benchmark ↑ | Last — requires full index rebuild | ⬜ not done |
 
 ---
 
@@ -191,15 +191,15 @@ JWT auth, rate limiting, CORS restriction, env-driven DB URL, upload size limits
 
 ---
 
-## 4. Quick Wins (before Phase A)
+## 4. Quick Wins (before Phase A) ✅ all done
 
 Five changes, each under 30 minutes, that unblock all later phases:
 
-1. `api/chat.py`: replace `set(sources)` with order-preserving dedup
-2. `test.py`: add `from services.rag_core import vector_db`
-3. `services/rag_core.py`: `langchain_community.vectorstores.Chroma` → `langchain_chroma.Chroma`
-4. `api/document.py`: three-tier title fallback — filename → PDF metadata → first-line heuristic
-5. Extract prompt string from `api/chat.py` → `prompts/answer.md`
+1. ✅ `api/chat.py`: replace `set(sources)` with order-preserving dedup
+2. ✅ `test.py`: add `from services.rag_core import vector_db`
+3. ✅ `services/rag_core.py`: `langchain_community.vectorstores.Chroma` → `langchain_chroma.Chroma`
+4. ✅ `api/document.py`: three-tier title fallback (actual order ended up: PDF metadata → first-line heuristic → filename, slightly different from the original plan)
+5. ✅ Extract prompt string from `api/chat.py` → `prompts/answer.md`
 
 ---
 
