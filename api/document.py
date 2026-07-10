@@ -54,6 +54,48 @@ def extract_title(pages: list[Document], filename: str) -> str:
     return filename
 
 
+QA_MARKER_RE = re.compile(r"(?m)^([一二三四五六七八九十]+、\s?)")
+QUESTION_MARK_WINDOW = 70  # 題目編號後多少字內要出現問號，才算「真正的題目」
+
+
+def _question_markers(full_text: str) -> list[re.Match]:
+    """只留下後面緊接著問號的編號——答案內文自己也常有「一、二、三」子清單
+    （例如條列款項），這些沒有問號，用這個條件把它們濾掉，避免把一組完整
+    問答誤切成好幾個破碎的子清單 chunk。
+    """
+    markers = []
+    for m in QA_MARKER_RE.finditer(full_text):
+        window = full_text[m.end():m.end() + QUESTION_MARK_WINDOW]
+        if "?" in window or "？" in window:
+            markers.append(m)
+    return markers
+
+
+def looks_like_qa_doc(full_text: str) -> bool:
+    """判斷是不是「問／答」對照格式的文件：開頭附近同時出現「問」「答」
+    這兩個獨立欄位標題，且至少有 3 個「真正的題目」編號。
+    """
+    head = full_text[:300]
+    return "問" in head and "答" in head and len(_question_markers(full_text)) >= 3
+
+
+def split_qa_pairs(full_text: str) -> list[str]:
+    """照題目編號邊界切，讓每個 chunk 剛好是一組完整問答，
+    取代固定字數切塊——後者會把題目切在題號中間，檢索時常常只抓到半題。
+    """
+    matches = _question_markers(full_text)
+    if not matches:
+        return [full_text]
+    blocks = []
+    for i, m in enumerate(matches):
+        start = m.start()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(full_text)
+        block = full_text[start:end].strip()
+        if block:
+            blocks.append(block)
+    return blocks
+
+
 router = APIRouter(prefix="/api/document", tags=["Document"])
 
 UPLOAD_DIR = "uploads"
@@ -90,18 +132,29 @@ async def upload_multiple_pdfs(files: Annotated[list[UploadFile], File(descripti
 
             
             real_title = extract_title(pages, file.filename)
+            full_text = "\n".join(p.page_content for p in pages)
 
-            chunks = text_splitter.split_documents(pages)
-        
-            for chunk in chunks:
-                chunk.metadata["source"] = file.filename
-                chunk.metadata["title"] = real_title # 寫入真實標題
-                all_chunks.append(chunk)
+            if looks_like_qa_doc(full_text):
+                # 問答對照格式：照題號邊界切，避免固定字數切塊把題目切在題號中間
+                chunks = [
+                    Document(
+                        page_content=block,
+                        metadata={"source": file.filename, "title": real_title},
+                    )
+                    for block in split_qa_pairs(full_text)
+                ]
+            else:
+                chunks = text_splitter.split_documents(pages)
+                for chunk in chunks:
+                    chunk.metadata["source"] = file.filename
+                    chunk.metadata["title"] = real_title # 寫入真實標題
+
+            all_chunks.extend(chunks)
 
             results.append({
-                "filename": file.filename, 
+                "filename": file.filename,
                 "real_title": real_title,
-                "status": "success", 
+                "status": "success",
                 "chunks_count": len(chunks)
             })
 
