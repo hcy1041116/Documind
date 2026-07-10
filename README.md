@@ -23,6 +23,13 @@
 
 ## 啟動方式
 
+**一鍵啟動**（會先檢查 5432 port 有沒有被 WSL 內建 PostgreSQL 占用，再依序拉起 postgres／後端／前端）
+```bash
+./start.sh
+```
+
+**或手動分開啟動：**
+
 **PostgreSQL（Docker）**
 ```bash
 docker compose up -d
