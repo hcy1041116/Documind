@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Send, FileText, Loader2, User, Bot, UploadCloud, Database, Paperclip } from 'lucide-react';
+import { Send, FileText, Loader2, User, Bot, UploadCloud, Database, Paperclip, Download } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
@@ -77,6 +77,30 @@ const App: React.FC = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownload = async (filename: string) => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/document/download/${encodeURIComponent(filename)}`, {
+        headers: { 'X-Access-Code': accessCode },
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        handleUnauthorized();
+      } else {
+        console.error("Download Error:", err);
+        alert("❌ 下載失敗，請檢查控制台錯誤訊息。");
+      }
     }
   };
 
@@ -204,9 +228,16 @@ const App: React.FC = () => {
               <p className="text-xs font-semibold text-slate-500 mb-2">知識庫已收錄</p>
               <ul className="space-y-1">
                 {uploadedFiles.map((name, i) => (
-                  <li key={i} className="flex items-center gap-2 text-xs text-slate-600">
+                  <li key={i} className="flex items-center gap-2 text-xs text-slate-600 group">
                     <FileText size={12} className="shrink-0 text-blue-500" />
-                    <span className="truncate">{name}</span>
+                    <span className="truncate flex-1">{name}</span>
+                    <button
+                      onClick={() => handleDownload(name)}
+                      className="shrink-0 text-slate-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="下載檔案"
+                    >
+                      <Download size={12} />
+                    </button>
                   </li>
                 ))}
               </ul>
