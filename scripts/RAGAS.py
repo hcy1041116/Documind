@@ -1,6 +1,6 @@
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import json, time, asyncio, subprocess
+import json, time, asyncio
 import pandas as pd
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
@@ -82,47 +82,3 @@ if still_missing.sum() > 0:
 
 print(df[METRIC_COLS].mean().round(3))
 df.to_csv("results_ragas.csv", index=False)
-
-
-def get_git_commit():
-    try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "--short", "HEAD"], text=True, stderr=subprocess.DEVNULL
-        ).strip()
-    except Exception:
-        return "unknown"
-
-
-def append_eval_log(mean_scores, n_questions, missing_counts):
-    """每次跑完 eval 附加一行到 docs/eval_log.md，累積歷史紀錄，
-    而不是像 results_ragas.csv 一樣每次覆蓋掉——這樣才有辦法看趨勢、抓 regression。
-    """
-    log_path = "docs/eval_log.md"
-    header = (
-        "# Eval Log\n\n"
-        "> 每次跑 `scripts/RAGAS.py` 自動附加一行，追蹤 RAG 改動對品質分數的影響。\n"
-        "> 分數是 0～1，越高越好；`missing` 是這輪有幾格分數因為連線問題拿不到（不是分數低，是根本沒評出來）。\n\n"
-        "| 時間 | Commit | 題數 | Faithfulness | Answer Relevancy | Context Recall | Context Precision | Missing |\n"
-        "|------|--------|------|--------------|-------------------|-----------------|--------------------|---------|\n"
-    )
-
-    if not os.path.exists(log_path):
-        with open(log_path, "w", encoding="utf-8") as f:
-            f.write(header)
-
-    row = (
-        f"| {time.strftime('%Y-%m-%d %H:%M')} "
-        f"| `{get_git_commit()}` "
-        f"| {n_questions} "
-        f"| {mean_scores['faithfulness']:.3f} "
-        f"| {mean_scores['answer_relevancy']:.3f} "
-        f"| {mean_scores['context_recall']:.3f} "
-        f"| {mean_scores['context_precision']:.3f} "
-        f"| {int(missing_counts.sum())} |\n"
-    )
-    with open(log_path, "a", encoding="utf-8") as f:
-        f.write(row)
-    print(f"已附加一筆紀錄到 {log_path}")
-
-
-append_eval_log(df[METRIC_COLS].mean(), len(df), still_missing)

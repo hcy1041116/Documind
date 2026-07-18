@@ -29,3 +29,9 @@ notes/
 # Eval output
 results.csv
 results_ragas.csv
+
+# Deprecated: markdown eval log + hand-rolled HTML dashboard
+# (superseded by Postgres + Grafana; scripts/plot_eval_log.py kept locally but not tracked)
+docs/eval_log.md
+docs/eval_dashboard.html
+scripts/plot_eval_log.py
