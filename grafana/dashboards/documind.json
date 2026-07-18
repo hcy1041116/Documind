@@ -1,0 +1,127 @@
+{
+  "title": "DocuMind Usage",
+  "uid": "documind-usage",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "timezone": "browser",
+  "time": { "from": "now-30d", "to": "now" },
+  "refresh": "",
+  "panels": [
+    {
+      "id": 1,
+      "title": "提問量趨勢",
+      "type": "timeseries",
+      "datasource": { "type": "postgres", "uid": "documind-postgres" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 40 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('day', timestamp) AS time, count(*) AS \"提問數\"\nFROM chat_history\nWHERE $__timeFilter(timestamp)\nGROUP BY 1\nORDER BY 1",
+          "rawQuery": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "平均回答長度（字）",
+      "type": "timeseries",
+      "datasource": { "type": "postgres", "uid": "documind-postgres" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "drawStyle": "line", "lineWidth": 2 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('day', timestamp) AS time, avg(length(ai_response)) AS \"平均字數\"\nFROM chat_history\nWHERE $__timeFilter(timestamp)\nGROUP BY 1\nORDER BY 1",
+          "rawQuery": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "「找不到相關資訊」比例（知識庫缺口指標）",
+      "type": "stat",
+      "datasource": { "type": "postgres", "uid": "documind-postgres" },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 15 },
+              { "color": "red", "value": 30 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT round(100.0 * count(*) FILTER (WHERE ai_response LIKE '%找不到相關資訊%') / NULLIF(count(*), 0), 1) AS \"pct\"\nFROM chat_history\nWHERE $__timeFilter(timestamp)",
+          "rawQuery": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "模型使用比例",
+      "type": "piechart",
+      "datasource": { "type": "postgres", "uid": "documind-postgres" },
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": {
+        "reduceOptions": { "values": true, "calcs": [], "fields": "" },
+        "pieType": "pie",
+        "legend": { "displayMode": "list", "placement": "right", "values": ["value"] }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT coalesce(model_provider, 'unknown') AS \"模型\", count(*) AS \"次數\"\nFROM chat_history\nWHERE $__timeFilter(timestamp)\nGROUP BY 1",
+          "rawQuery": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "文件引用排行（Top 10）",
+      "type": "bargauge",
+      "datasource": { "type": "postgres", "uid": "documind-postgres" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "min": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] } },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "reduceOptions": { "values": true, "calcs": [], "fields": "" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT source AS \"文件\", count(*) AS \"引用次數\"\nFROM chat_history, jsonb_array_elements_text(sources) AS source\nWHERE $__timeFilter(timestamp) AND sources IS NOT NULL\nGROUP BY 1\nORDER BY 2 DESC\nLIMIT 10",
+          "rawQuery": true
+        }
+      ]
+    }
+  ]
+}

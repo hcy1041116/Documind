@@ -57,10 +57,14 @@ async def ask_document(request: ChatRequest, db: AsyncSession = Depends(get_db))
             "input": request.question
         }, config={"callbacks": [langfuse_handler]})
 
-        # 💾 4. 寫入新記憶
+        # 💾 4. 寫入新記憶（含 sources／model_provider，給 Grafana 儀表板用）
         try:
             new_chat = models.ChatHistory(
-                user_id=request.user_id, user_question=request.question, ai_response=response
+                user_id=request.user_id,
+                user_question=request.question,
+                ai_response=response,
+                sources=sources,
+                model_provider=request.model_provider.value,
             )
             db.add(new_chat)
             await db.commit()
