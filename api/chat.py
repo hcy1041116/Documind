@@ -11,6 +11,7 @@ from database import get_db
 import models
 from services.rag_core import get_hybrid_retriever, rerank_documents
 from services.observability import get_langfuse_handler
+from services.agent_graph import crag_graph
 from schemas import ChatRequest, ChatTestRequest, ModelProvider
 
 
@@ -75,6 +76,59 @@ async def ask_document(request: ChatRequest, db: AsyncSession = Depends(get_db))
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/ask_agentic")
+async def ask_document_agentic(request: ChatRequest, db: AsyncSession = Depends(get_db)):
+    """跟 /ask 一樣的介面，但走 CRAG state machine（見 services/agent_graph.py）：
+    多一個「檢索夠不夠好」的評分步驟，不夠才會觸發外部搜尋（Tavily MCP）補內容。
+    /ask 本身不動，方便兩邊對照測試（DESIGN.md 原本規劃的 fallback 策略）。
+    """
+    try:
+        stmt = select(models.ChatHistory).where(
+            models.ChatHistory.user_id == request.user_id
+        ).order_by(models.ChatHistory.timestamp.desc()).limit(5)
+
+        result = await db.execute(stmt)
+        history_records = result.scalars().all()
+        history_records.reverse()
+
+        chat_history_str = "".join([f"User: {m.user_question}\nAI: {m.ai_response}\n\n" for m in history_records])
+
+        langfuse_handler = get_langfuse_handler()
+        final_state = await crag_graph.ainvoke(
+            {"question": request.question, "chat_history": chat_history_str},
+            config={"callbacks": [langfuse_handler]},
+        )
+
+        answer = final_state["answer"]
+        sources = final_state["sources"]
+
+        try:
+            new_chat = models.ChatHistory(
+                user_id=request.user_id,
+                user_question=request.question,
+                ai_response=answer,
+                sources=sources,
+                # agent_graph.py 目前所有節點都寫死用 OpenAI（還沒支援 ollama），
+                # 忠實記錄實際用的模型，不是照抄 request 裡選的值
+                model_provider="openai",
+            )
+            db.add(new_chat)
+            await db.commit()
+        except Exception:
+            await db.rollback()
+
+        return {
+            "status": "success",
+            "answer": answer,
+            "sources": sources,
+            "grade": final_state.get("grade"),
+            "used_web_search": bool(final_state.get("web_results")),
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/test-insert")
 async def test_insert_chat(request: ChatTestRequest, db: AsyncSession = Depends(get_db)):
