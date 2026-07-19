@@ -176,7 +176,7 @@ const App: React.FC = () => {
           <h2 className="text-lg font-bold text-slate-800">DocuMind 知識庫</h2>
         </div>
 
-        <div className="p-6 flex-1 flex flex-col gap-4">
+        <div className="p-6 flex-1 min-h-0 flex flex-col gap-4">
           <p className="text-sm text-slate-500 mb-2">上傳企業法規、說明書或 PDF 文件，讓 AI 成為你的專屬顧問。</p>
 
           <select
@@ -208,8 +208,8 @@ const App: React.FC = () => {
               <p className="text-xs font-semibold text-blue-800 mb-2 flex items-center gap-1">
                 <Paperclip size={14} /> 已選擇 {selectedFiles.length} 個檔案：
               </p>
-              <ul className="text-xs text-blue-600 truncate space-y-1 pl-1">
-                {Array.from(selectedFiles).map((f, i) => <li key={i}>{f.name}</li>)}
+              <ul className="text-xs text-blue-600 space-y-1 pl-1 max-h-32 overflow-y-auto">
+                {Array.from(selectedFiles).map((f, i) => <li key={i} className="truncate">{f.name}</li>)}
               </ul>
             </div>
           )}
@@ -224,9 +224,9 @@ const App: React.FC = () => {
           </button>
 
           {uploadedFiles.length > 0 && (
-            <div className="border-t border-slate-100 pt-4 overflow-y-auto">
-              <p className="text-xs font-semibold text-slate-500 mb-2">知識庫已收錄</p>
-              <ul className="space-y-1">
+            <div className="border-t border-slate-100 pt-4 flex-1 min-h-0 flex flex-col">
+              <p className="text-xs font-semibold text-slate-500 mb-2 shrink-0">知識庫已收錄</p>
+              <ul className="space-y-1 overflow-y-auto min-h-0">
                 {uploadedFiles.map((name, i) => (
                   <li key={i} className="flex items-center gap-2 text-xs text-slate-600 group">
                     <FileText size={12} className="shrink-0 text-blue-500" />
